@@ -1,0 +1,1038 @@
+#include "graphics.h"
+#include<iostream>
+#include<fstream>
+#include<Windows.h>
+using namespace std;
+#define INF  10000
+struct Point {
+
+	int x;
+	int y;
+	
+
+};
+class shape {
+
+protected:
+	int * points ;
+	int color;
+	int  numberofpoints;
+
+public:
+/*	virtual void draw()
+	{
+		points = new int[(2 * numberofpoints) + 2];
+		
+		//drawpoly(numberofpoints, points);
+		for (int i=0;i<numberofpoints;i++)
+		{
+
+			if (ismouseclick(WM_LBUTTONDOWN))
+			{
+				
+				getmouseclick(WM_LBUTTONDOWN, points[i], points[i+1]);
+				setcolor(BLACK);
+				settextstyle(BOLD_FONT,HORIZ_DIR,10 );
+				outtextxy(points[i],points[i+1],".");
+				i++;
+
+			}
+		}
+		points[2 * numberofpoints] = points[0];
+		points[(2 * numberofpoints)+1] = points[1];
+		drawpoly(numberofpoints, points);
+	} */
+	bool onSegment(Point p, Point q, Point r)
+	{
+		if (q.x <= max(p.x, r.x) && q.x >= min(p.x, r.x) &&
+			q.y <= max(p.y, r.y) && q.y >= min(p.y, r.y))
+			return true;
+		return false;
+	}
+	int orientation(Point p, Point q, Point r)
+	{
+		int val = (q.y - p.y) * (r.x - q.x) -
+			(q.x - p.x) * (r.y - q.y);
+
+		if (val == 0) return 0;  // colinear
+		return (val > 0) ? 1 : 2; // clock or counterclock wise
+	}
+	bool doIntersect(Point p1, Point q1, Point p2, Point q2)
+	{
+		// Find the four orientations needed for general and
+		// special cases
+		int o1 = orientation(p1, q1, p2);
+		int o2 = orientation(p1, q1, q2);
+		int o3 = orientation(p2, q2, p1);
+		int o4 = orientation(p2, q2, q1);
+
+		// General case
+		if (o1 != o2 && o3 != o4)
+			return true;
+
+		// Special Cases
+		// p1, q1 and p2 are colinear and p2 lies on segment p1q1
+		if (o1 == 0 && onSegment(p1, p2, q1)) return true;
+
+		// p1, q1 and p2 are colinear and q2 lies on segment p1q1
+		if (o2 == 0 && onSegment(p1, q2, q1)) return true;
+
+		// p2, q2 and p1 are colinear and p1 lies on segment p2q2
+		if (o3 == 0 && onSegment(p2, p1, q2)) return true;
+
+		// p2, q2 and q1 are colinear and q1 lies on segment p2q2
+		if (o4 == 0 && onSegment(p2, q1, q2)) return true;
+
+		return false; // Doesn't fall in any of the above cases
+	}
+	 bool contains( Point p)
+	{
+		if (numberofpoints < 3)
+		{
+			return false;
+		}
+
+		// Create a point for line segment from p to infinite
+		Point extreme = { INF, p.y };
+
+		// Count intersections of the above line with sides of polygon
+		int count = 0, i = 0;
+		do
+		{
+			int next = (i + 1) % numberofpoints;
+
+			// Check if the line segment from 'p' to 'extreme' intersects
+			// with the line segment from 'polygon[i]' to 'polygon[next]'
+			//if (doIntersect(polygon[i], polygon[next], p, extreme))
+			//{
+			//	// If the point 'p' is colinear with line segment 'i-next',
+			//	// then check if it lies on segment. If it lies, return true,
+			//	// otherwise false
+			//	if (orientation(polygon[i], p, polygon[next]) == 0)
+			//		return onSegment(polygon[i], p, polygon[next]);
+
+			//	count++;
+			//}
+			i = next;
+		} while (i != 0);
+
+		// Return true if count is odd, false otherwise
+		return count & 1;
+	}
+	virtual int * getpoints()
+	 {
+		 return points;
+
+	 }
+	virtual int getnumberofpoints()
+	 {
+		 return numberofpoints;
+	 }
+	virtual int getcolor()
+	 {
+		 return color;
+	 }
+};
+class polygoN :public shape
+{
+private:
+	int cap;
+	int size;
+public:
+	polygoN()
+	{
+		numberofpoints = 0;
+		points = new int[(2 * numberofpoints) + 2];
+		 cap = 2;
+		 size = 0;
+		 color = 15;
+
+	}
+	
+		void pushback(int a ,int b , int &c,int * & arr,int &size,int &cap)
+		{
+			if (size == 0)
+			{
+				arr[0] = a;
+				size++;
+				arr[1] = b;
+				size++;
+			
+				c++;
+			}
+			else
+			{
+				if (size >= cap)
+				{
+					cap += 2;
+					int *temp = new int[cap];
+					for (int i = 0; i < size; i++)
+					{
+						temp[i] = arr[i];
+
+					}
+					delete[]arr;
+					arr = new int[cap];
+					for (int i = 0; i < size; i++)
+					{
+						arr[i] = temp[i];
+					}
+				}
+				arr[size] = a;
+				arr[size + 1] = b;
+				size += 2;
+				c++;
+			}
+		}
+
+	void draw()
+	{
+		int x = 0; int y = 0;
+		while (1)
+		{
+			if (ismouseclick(WM_RBUTTONDOWN))
+			{ 
+				pushback(points[0],points[1],numberofpoints,points,size,cap);
+			/*	points[(2*numberofpoints)] = points[0];
+				points[(2*numberofpoints)+1] = points[1];
+				numberofpoints++;*/
+				drawpoly(numberofpoints,points);
+				break;
+			}
+			else if (ismouseclick(WM_LBUTTONDOWN)) 
+			{
+				getmouseclick(WM_LBUTTONDOWN, x, y);
+				char dot = '.';
+				char pixel[20];
+				pixel[0] = dot;
+				pixel[1] = '\0';
+				//setcolor(BLACK);
+				color = getcolor();
+				settextstyle(BOLD_FONT, HORIZ_DIR, 5);
+				outtextxy(x - 10, y - 25, pixel);
+				pushback(x,y,numberofpoints,points,size,cap);
+			}
+		}
+		
+	}
+};
+class trianglE :public shape
+{
+public:
+	trianglE()
+	{
+		numberofpoints = 3;
+		color = 15;
+	}
+	void draw()
+	{
+		points = new int[(2 * numberofpoints) + 2];
+		int x, y;
+		int i = 0;
+		char dot = '.';
+		char pixel[20];
+		pixel[0] = dot;
+		pixel[1] = '\0';
+		while (1)
+		{
+
+			if (ismouseclick(WM_LBUTTONDOWN))
+			{
+				cout << "clicked";
+				getmouseclick(WM_LBUTTONDOWN, x, y);
+				points[i] = x;
+				points[i + 1] = y;
+			    //setcolor(BLACK);
+				color = getcolor();
+				settextstyle(BOLD_FONT, HORIZ_DIR, 5);
+				outtextxy(points[i]-10, points[i + 1]-25 , pixel);
+				cout << pixel;
+				i++;
+				numberofpoints--;
+				if (numberofpoints == 0)
+				{
+					cout << "condition true";
+					points[6] = points[0];
+					points[7] = points[1];
+					drawpoly(4, points);
+					break;
+				}
+				i++;
+			}
+
+		}
+
+	}
+	
+};
+/*class RectanglE :public shape
+{
+public:
+     RectanglE()
+	{
+		numberofpoints = 4;
+		color = 15;
+	}
+	 void draw()
+	 {
+
+		 points = new int[(2*numberofpoints) + 2];
+		 int x, y;
+		 int i = 0;
+		 char dot = '.';
+		 char pixel[20];
+		 pixel[0] = dot;
+		 pixel[1] = '\0';
+		while(1)
+		 {
+
+			 if (ismouseclick(WM_LBUTTONDOWN))
+			 {
+				 cout << "clicked";
+				 getmouseclick(WM_LBUTTONDOWN, x,y);
+				 points[i] = x;
+				 points[i + 1] = y;
+				 color = getcolor();
+				// setcolor(BLACK);
+				 settextstyle(BOLD_FONT, HORIZ_DIR, 5);
+				 outtextxy(points[i]-10, points[i + 1]-25,pixel);
+				 cout << pixel;
+				 i++;
+				 numberofpoints--;
+				 if (numberofpoints == 0)
+				 {
+					 cout << "condition true";
+					 points[8] = points[0];
+					 points[9 ] = points[1];
+					 drawpoly(5,points);
+					 break;
+				 }
+				 i++;
+			 }
+			 
+		 }
+	
+	 }
+
+
+};*/
+class RectanglE :public shape
+{
+public:
+	RectanglE()
+	{
+		numberofpoints = 2;
+		color = 15;
+		points = new int[(2 * numberofpoints)];
+	}
+	void draw()
+	{
+
+		points = new int[(2 * numberofpoints)];
+		int x, y;
+		int i = 0;
+		char dot = '.';
+		char pixel[20];
+		pixel[0] = dot;
+		pixel[1] = '\0';
+		while (1)
+		{
+
+			if (ismouseclick(WM_LBUTTONDOWN))
+			{
+				cout << "clicked";
+				getmouseclick(WM_LBUTTONDOWN, x, y);
+				points[i] = x;
+				points[i + 1] = y;
+				color = getcolor();
+				// setcolor(BLACK);
+				settextstyle(BOLD_FONT, HORIZ_DIR, 5);
+				outtextxy(points[i] - 10, points[i + 1] - 25, pixel);
+				cout << pixel;
+				i++;
+				numberofpoints--;
+				if (numberofpoints == 0)
+				{
+					cout << "condition true";
+					rectangle(points[0], points[1], points[2], points[3]);
+					break;
+				}
+				i++;
+			}
+
+		}
+
+	}
+	int * getponts()
+	{
+		return points;
+
+	}
+	int getnumbrofpoints()
+	{
+		return numberofpoints;
+	}
+	int getclor()
+	{
+		return color;
+	}
+
+};
+class linE :public shape
+{
+public:
+	linE()
+	{
+		numberofpoints = 2;
+		color = 15;
+	}
+	void draw()
+	{
+		points = new int[(2 * numberofpoints)];
+		int x, y;
+		int i = 0;
+		char dot = '.';
+		char pixel[20];
+		pixel[0] = dot;
+		pixel[1] = '\0';
+		while (1)
+		{
+
+			if (ismouseclick(WM_LBUTTONDOWN))
+			{
+				cout << "clicked";
+				getmouseclick(WM_LBUTTONDOWN, x, y);
+				points[i] = x;
+				points[i + 1] = y;
+				//setcolor(BLACK);
+				color = getcolor();
+				settextstyle(BOLD_FONT, HORIZ_DIR, 5);
+				outtextxy(points[i] - 10, points[i + 1] - 25, pixel);
+				cout << pixel;
+				i++;
+				numberofpoints--;
+				if (numberofpoints == 0)
+				{
+					drawpoly(2, points);
+					break;
+				}
+				i++;
+			}
+
+		}
+
+	}
+};
+class circlE :public shape{
+
+public:
+
+	circlE()
+	{
+		numberofpoints = 2;
+		color = 15;
+	}
+	void draw()
+	{
+		points = new int[2];
+		int x, y;
+		int i = 0;
+		char dot = '.';
+		char pixel[20];
+		pixel[0] = dot;
+		pixel[1] = '\0';
+
+		while (1)
+		{
+
+			if (ismouseclick(WM_LBUTTONDOWN))
+			{
+				cout << "clicked";
+				getmouseclick(WM_LBUTTONDOWN, x, y);
+				points[i] = x;
+				points[i + 1] = y;
+				//setcolor(BLACK);
+				color = getcolor();
+				if (numberofpoints == 2)
+				{
+					settextstyle(BOLD_FONT, HORIZ_DIR, 5);
+					outtextxy(points[i] - 10, points[i + 1] - 25, pixel);
+					cout << pixel;
+				}
+				i++;
+				numberofpoints--;
+				if (numberofpoints == 0)
+				{
+					
+					int rad = points[3] - points[1];
+					delay(100);
+					circle(points[0], points[1], rad);
+				//	setfillstyle(SOLID_FILL,color);
+				//	floodfill(points[0], points[1], color);
+					break;
+				}
+				i++;
+			}
+
+		}
+
+	}
+};
+class curvE :public shape
+{
+private:
+	int cap;
+	int size;
+public:
+	curvE()
+	{
+		numberofpoints = 0;
+		points = new int[(2 * numberofpoints) + 2];
+		cap = 2;
+		size = 0;
+		color = 15;
+
+	}
+
+	void pushback(int a, int b, int &c, int * & arr, int &size, int &cap)
+	{
+		if (size == 0)
+		{
+			arr[0] = a;
+			size++;
+			arr[1] = b;
+			size++;
+
+			c++;
+		}
+		else
+		{
+			if (size >= cap)
+			{
+				cap += 2;
+				int *temp = new int[cap];
+				for (int i = 0; i < size; i++)
+				{
+					temp[i] = arr[i];
+
+				}
+				delete[]arr;
+				arr = new int[cap];
+				for (int i = 0; i < size; i++)
+				{
+					arr[i] = temp[i];
+				}
+			}
+			arr[size] = a;
+			arr[size + 1] = b;
+			size += 2;
+			c++;
+		}
+	}
+
+	void draw()
+	{
+		int x = 0; int y = 0;
+		while (1)
+		{
+			if (ismouseclick(WM_RBUTTONDOWN))
+			{
+				//pushback(points[0], points[1], numberofpoints, points, size, cap);
+				/*	points[(2*numberofpoints)] = points[0];
+				points[(2*numberofpoints)+1] = points[1];
+				numberofpoints++;*/
+				drawpoly(numberofpoints-1, points);
+				break;
+			}
+			else if (ismouseclick(WM_LBUTTONDOWN))
+			{
+				getmouseclick(WM_LBUTTONDOWN, x, y);
+				char dot = '.';
+				char pixel[20];
+				pixel[0] = dot;
+				pixel[1] = '\0';
+				//setcolor(BLACK);
+				color = getcolor();
+				settextstyle(BOLD_FONT, HORIZ_DIR, 5);
+				outtextxy(x - 10, y - 25, pixel);
+				pushback(x, y, numberofpoints, points, size, cap);
+			}
+		}
+
+	}
+};
+/*void Decrease(shape * arr[] , int size , int i)
+{
+	int j = 0; 
+	for (; j<size; j++)
+	{
+		if (j == i)
+		{
+			///*delete[] arr[j];
+			break;
+		}
+	}
+	for (; j <10; j++)
+	{
+		arr[j] = arr[j + 1];
+	}
+	arr[j] = 0;
+
+}*/
+void setColor()
+{
+	int x, y;
+	while (1)
+	{
+		if (ismouseclick(WM_LBUTTONDOWN))
+		{
+			getmouseclick(WM_LBUTTONDOWN,x,y);
+			if (x >= 10 && y >= 150 && x <= 30 && y <= 170)
+			{
+				setcolor(0);
+				setfillstyle(SOLID_FILL,0);
+				floodfill(20, 420, 0);
+				break;
+			}
+			if (x >= 40 && y >= 150 && x <= 60 && y <= 170)
+			{
+				setcolor(1);
+				setfillstyle(SOLID_FILL, 1);
+				floodfill(20, 420, 0);
+				break;
+			}
+			if (x >= 10 && y >= 180 && x <= 30 && y <= 200)
+			{
+				setcolor(2);
+				setfillstyle(SOLID_FILL, 2);
+				floodfill(20, 420, 0);
+				break;
+			}
+			if (x >= 40 && y >= 180 && x <= 60 && y <= 200)
+			{
+				setcolor(3);
+				setfillstyle(SOLID_FILL,3);
+				floodfill(20, 420, 0);
+				break;
+			}
+			if (x >= 10 && y >= 210 && x <= 30 && y <= 230)
+			{
+				setcolor(4);
+				setfillstyle(SOLID_FILL, 4);
+				floodfill(20, 420, 0);
+				break;
+			}
+			if (x >= 40 && y >= 210 && x <= 60 && y <= 230)
+			{
+				setcolor(5);
+				setfillstyle(SOLID_FILL, 5);
+				floodfill(20, 420, 0);
+				break;
+			}
+			if (x >= 10 && y >= 240 && x <= 30 && y <= 260)
+			{
+				setcolor(6);
+				setfillstyle(SOLID_FILL, 6);
+				floodfill(20, 420, 0);
+				break;
+			}
+			if (x >= 40 && y >= 240 && x <= 60 && y <= 260)
+			{
+				setcolor(7);
+				setfillstyle(SOLID_FILL, 7);
+				floodfill(20, 420, 0);
+				break;
+			}
+			if (x >= 10 && y >= 270 && x <= 30 && y <= 290)
+			{
+				setcolor(8);
+				setfillstyle(SOLID_FILL, 8);
+				floodfill(20, 420, 0);
+				break;
+			}
+			if (x >= 40 && y >= 270 && x <= 60 && y <= 290)
+			{
+				setcolor(9);
+				setfillstyle(SOLID_FILL, 9);
+				floodfill(20, 420, 0);
+				break;
+			}
+			if (x >= 10 && y >= 300 && x <= 30 && y <= 320)
+			{
+				setcolor(10);
+				setfillstyle(SOLID_FILL, 10);
+				floodfill(20, 420, 0);
+				break;
+			}
+			if (x >= 40 && y >= 300 && x <= 60 && y <= 320)
+			{
+				setcolor(11);
+				setfillstyle(SOLID_FILL, 11);
+				floodfill(20, 420, 0);
+				break;
+			}
+			if (x >= 10 && y >= 330 && x <= 30 && y <= 350)
+			{
+				setcolor(12);
+				setfillstyle(SOLID_FILL, 12);
+				floodfill(20, 420, 0);
+				break;
+			}
+			if (x >= 40 && y >= 330 && x <= 60 && y <= 350)
+			{
+				setcolor(13);
+				setfillstyle(SOLID_FILL, 13);
+				floodfill(20, 420, 0);
+				break;
+			}
+			if (x >= 10 && y >= 360 && x <= 30 && y <= 380)
+			{
+				setcolor(14);
+				setfillstyle(SOLID_FILL, 14);
+				floodfill(20, 420, 0);
+				break;
+			}
+			if (x >= 40 && y >= 360 && x <= 60 && y <= 380)
+			{
+				setcolor(15);
+				setfillstyle(SOLID_FILL, 15);
+				floodfill(20, 420, 0);
+				break;
+			}
+		}
+	}
+
+}
+void fill(int x, int y, int color, int oldcolor)
+{
+	color = getcolor();
+	if (getpixel(x, y) != WHITE)
+	{
+		return;
+
+	}
+	else
+	{
+
+		putpixel(x, y, color);
+		fill(x + 1, y, color, oldcolor);
+		//	fill(x + 1, y - 1, color, oldcolor);
+		fill(x, y + 1, color, oldcolor);
+		fill(x - 1, y, color, oldcolor);
+		fill(x, y - 1, color, oldcolor);
+
+		//	fill(x + 1, y + 1, color, oldcolor);
+
+		//fill(x -1, y + 1, color, oldcolor);
+		//fill(x - 1, y - 1, color, oldcolor);
+	}
+}
+
+void eraser(shape * allshape[], int index)
+{
+
+	while (1)
+	{
+		int mx, my;
+		int color=WHITE;
+		int oldcolor = 1;
+		int p1 = 0, p2 = 0;
+		if (ismouseclick(WM_LBUTTONDOWN))
+		{
+			getmouseclick(WM_LBUTTONDOWN, mx, my);
+			for (int i = 0; i < index; i++)
+			{
+				if (mx >= allshape[i]->getpoints()[0] && my >= allshape[i]->getpoints()[1])
+				{
+					p1 = allshape[i]->getpoints()[0];
+					p2 = allshape[i]->getpoints()[1];
+					delete[]allshape[i];
+					i = index + 1;
+				}
+			}
+			setcolor(WHITE);
+			setfillstyle(SOLID_FILL, WHITE);
+			setbkcolor(WHITE);
+		//	fill(p1,p2,color,oldcolor);
+		    bar(p1, p2, p1 + 100, p2 + 100);
+			delay(0);
+		}
+		else if (ismouseclick(WM_RBUTTONDOWN))
+		{
+			break;
+		}
+	}
+}
+
+
+void brush()
+{
+	int n = 1;
+	int x, y;
+	int colour = getcolor();
+	int oldcolor = 1;
+	while (1)
+	{
+		if (ismouseclick(WM_LBUTTONDOWN))
+		{
+			getmouseclick(WM_LBUTTONDOWN, x, y);
+				setfillstyle(SOLID_FILL,colour);
+				fill(x,y, colour,oldcolor);
+				n--;
+				if (n == 0)
+				{
+					break;
+				}
+		}
+	}
+}
+int  main()
+
+{
+	int n ;
+	cout << "enter 1 to open new project and 0 to open saved=";
+	cin >> n;
+	
+ 
+
+		shape * allshapes[100];
+		int index = 0;
+		DWORD screenWidth = GetSystemMetrics(SM_CXSCREEN);
+		DWORD screenHeight = GetSystemMetrics(SM_CYSCREEN);
+		initwindow(960, 480, "PAINT BRUSH SOFTWARE");
+		ofstream infile;
+		infile.open("allshapes.pb",ios::app);
+		bar(0, 0, 960 - 1, 480 - 1);
+		setcolor(BLACK);
+		setfillstyle(SOLID_FILL, WHITE);
+		setbkcolor(WHITE);
+		setcolor(BLACK);
+		rectangle(5, 0, 935, 450);
+
+		outtextxy(10, 2, "FILE ");
+		outtextxy(50, 2, "EDIT ");
+		outtextxy(90, 2, "VIEW ");
+		outtextxy(130, 2, "SAVE");
+		outtextxy(170, 2, "CURVE ");
+		setcolor(BLACK);
+		line(5, 20, 935, 20);
+		line(70, 20, 70, 450);
+		rectangle(10, 30, 30, 50);
+		rectangle(15, 35, 25, 45);
+		rectangle(10, 60, 30, 80);
+		line(20, 65, 15, 75);
+		line(20, 65, 25, 75);
+		line(15, 75, 25, 75);
+		rectangle(40, 30, 60, 50);
+		circle(50, 40, 5);
+		rectangle(40, 60, 60, 80);
+		bar3d(42, 65, 50, 75, 6, 1);
+		line(42, 75, 50, 75);
+		rectangle(40, 90, 60, 110);
+		line(47, 95, 47, 105);
+		line(53, 95, 53, 105);
+		line(47, 95, 53, 95);
+		line(47, 95, 50, 92);
+		line(53, 95, 50, 92);
+		line(47, 105, 53, 105);
+		rectangle(10, 90, 30, 110);
+		line(20, 98, 20, 105);
+		for (int i = 0; i < 20; i += 2)
+		{
+			line(20, 98, 12 + i, 93);
+		}
+		rectangle(10, 120, 30, 140);
+		line(15, 130, 25, 130);
+		rectangle(40, 120, 60, 140);
+		line(45, 130, 50, 125);
+		line(50, 125, 55, 130);
+		line(45, 130, 45, 133);
+		line(55, 130, 55, 133);
+		line(45, 133, 50, 138);
+		line(55, 133, 50, 138);
+		int q = 0;
+		for (int i = 0; i < (8 * 30); i += 30)
+		{
+			rectangle(10, 150 + i, 30, 170 + i);
+			setfillstyle(SOLID_FILL, q);
+			floodfill(15, 160 + i, BLACK);
+			q++;
+			rectangle(40, 150 + i, 60, 170 + i);
+			setfillstyle(SOLID_FILL, q);
+			floodfill(45, 160 + i, BLACK);
+			q++;
+		}
+		rectangle(10, 400, 60, 440);
+
+		int x, y;
+		/*while (1)
+		{
+			if (ismouseclick(WM_LBUTTONDOWN))
+			{
+				getmouseclick(WM_LBUTTONDOWN, x, y);
+				cout << x << endl;
+				cout << y << endl;
+			}
+		}*/
+		if (n == 0)
+		{
+			int numb;
+			int col;
+			int *arr;
+			ifstream fin;
+			fin.open("allshapes.pb");
+			fin >> numb;
+			fin >> col;
+			arr = new int[2 * numb];
+			setcolor(col);
+			for (int i = 0; i < (2 * numb); i++)
+			{
+				fin >> arr[i];
+			}
+			rectangle(arr[0], arr[1], arr[2], arr[3]);
+		}
+		else if (n == 1)
+		{
+		while (1)
+		{
+			if (ismouseclick(WM_LBUTTONDOWN))
+			{
+				getmouseclick(WM_LBUTTONDOWN, x, y);
+				if (x >= 10 && y >= 30 && x <= 30 && y <= 60)
+
+				{
+					RectanglE b;
+					setColor();
+					b.draw();
+
+					allshapes[index++] = new RectanglE(b);
+					infile << b.getnumbrofpoints() << " ";
+					infile << b.getclor() << " ";
+					for (int i = 0; i < (2 * b.getnumbrofpoints()); i++)
+					{
+						infile << b.getponts()[i] << " ";
+					}
+					infile << endl;
+					//index++;
+				}
+				if (x >= 40 && y >= 30 && x <= 60 && y <= 60)
+				{
+					circlE a;
+					setColor();
+					a.draw();
+					allshapes[index++] = new circlE(a);
+
+				}
+				if (x >= 10 && y >= 60 && x <= 30 && y <= 80)
+				{
+					trianglE a;
+					setColor();
+					a.draw();
+					allshapes[index++] = new trianglE(a);
+
+				}
+				if (x >= 10 && y >= 120 && x <= 30 && y <= 140)
+				{
+					linE c;
+					setColor();
+					c.draw();
+					allshapes[index++] = new linE(c);
+				}
+				if (x >= 40 && y >= 120 && x <= 60 && y <= 140)
+				{
+					polygoN a;
+					setColor();
+					a.draw();
+					allshapes[index++] = new polygoN(a);
+				}
+				if (x >= 40 && y >= 60 && x <= 60 && y <= 80)
+				{
+
+					eraser(allshapes, index);
+				}
+				if (x >= 10 && y >= 90 && x <= 30 && y <= 110)
+				{
+					setColor();
+					brush();
+				}
+				if (x >= 170 && y >= 1 && x <= 220 && y <= 20)
+				{
+					setColor();
+					curvE a;
+					a.draw();
+					allshapes[index++] = new curvE(a);
+				}
+				if (x >= 40 && y >= 90 && x <= 60 && y <= 110)
+				{
+					setColor();
+					int a = 0, b = 0;
+					while (1)
+					{
+
+						POINT cp;
+						GetCursorPos(&cp);
+
+						int mx = cp.x - 5, my = cp.y - 32;
+						if (ismouseclick(WM_LBUTTONDOWN))
+						{/*
+						 setcolor(BLACK);
+						 setfillstyle(SOLID_FILL , BLACK);
+						 bar(mx, my, mx + 5, my + 5);*/
+
+							char dot = getch();
+							char pixel[20];
+							pixel[0] = dot;
+							pixel[1] = '\0';
+							settextstyle(BOLD_FONT, HORIZ_DIR, 2);
+							outtextxy(mx - 10 + b, my - 25, pixel);
+							a = textwidth(pixel);
+							b = b + a;
+							delay(0);
+							if (ismouseclick(WM_RBUTTONDOWN))
+							{
+								pixel[0] = '\0';
+								break;
+							}
+						}
+
+					}
+
+
+				}
+
+			}
+		}
+
+
+		/*bar(200, 200, 400, 400);
+		int xc=0, yc=0;
+		while (1)
+		{
+
+			if (ismouseclick(WM_LBUTTONDOWN))
+			{
+
+				getmouseclick(WM_LBUTTONDOWN, xc, yc);
+				cout << xc << ", " << yc << endl;
+				break;
+
+			}
+
+
+		}
+
+		setfillstyle(SOLID_FILL, GREEN);
+		floodfill(300, 300, RED);*/
+
+
+
+		//int x, y;
+		//cp.x = 10;
+		//cp.y = 2;
+		//x = cp.x; y = cp.y-32;
+
+	}
+	getch();
+	return 0;
+
+}
